@@ -45,9 +45,8 @@ class ElasticsearchApplicationTests {
     RestHighLevelClient highLevelClient;
     //ES的Java客户端，类似于JDBC中的Connection
 
-
     //用highLevelClient调用indices方法获得这个ES中所有和索引相关的客户端IndicesClient
-
+    //GET _cat/indices可以用于查询所有索引
     @Test
     void testCreateNewIndex() throws IOException {
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(INDEX_NAME);
@@ -126,6 +125,7 @@ class ElasticsearchApplicationTests {
         GetAliasesRequest getAliasesRequest = new GetAliasesRequest();
         GetAliasesResponse aliasesResponse =
                 indicesClient.getAlias(getAliasesRequest, RequestOptions.DEFAULT);
+
         Map<String, Set<AliasMetadata>> indices = aliasesResponse.getAliases();
         indices.keySet().forEach(k->{
             System.out.println(k);
@@ -147,7 +147,7 @@ class ElasticsearchApplicationTests {
         users.put("Jerry", 2);
         users.put("Ben", 18);
 
-        IndexRequest indexRequest = new IndexRequest(INDEX_NAME)
+        IndexRequest indexRequest = new IndexRequest("abc")
                 .id("10")
                 .source(users);
         //此处只是准备好了一个文档，并没有真正建立
@@ -159,14 +159,14 @@ class ElasticsearchApplicationTests {
 
     @Test
     void testIsExists() throws IOException {
-        GetRequest request = new GetRequest(INDEX_NAME, "1");
+        GetRequest request = new GetRequest("abc", "10");
         boolean exists = highLevelClient.exists(request, RequestOptions.DEFAULT);
         assertTrue(exists);
     }
 
     @Test
     void testGetDocument() throws IOException {
-        GetRequest getRequest = new GetRequest(INDEX_NAME, "1");
+        GetRequest getRequest = new GetRequest("abc", "10");
         GetResponse response = highLevelClient.get(getRequest, RequestOptions.DEFAULT);
         System.out.println(response.getSourceAsString());
     }
@@ -174,7 +174,7 @@ class ElasticsearchApplicationTests {
     @Test
     void testUpdateDocument() throws IOException {
         UpdateRequest updateRequest =
-                new UpdateRequest(INDEX_NAME, "1")
+                new UpdateRequest("abc", "10")
                         .doc("tom", 2);
         UpdateResponse updateResponse
                 = highLevelClient.update(updateRequest, RequestOptions.DEFAULT);
@@ -182,7 +182,7 @@ class ElasticsearchApplicationTests {
 
     @Test
     void testDeleteDocument() throws IOException {
-        DeleteRequest deleteRequest = new DeleteRequest(INDEX_NAME, "2");
+        DeleteRequest deleteRequest = new DeleteRequest("abc", "10");
         DeleteResponse deleteResponse
                 = highLevelClient.delete(deleteRequest, RequestOptions.DEFAULT);
         System.out.println(deleteResponse);
@@ -193,7 +193,7 @@ class ElasticsearchApplicationTests {
         BulkRequest bulkRequest = new BulkRequest();
         bulkRequest.timeout("10s");
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 100; i++)
             bulkRequest.add(new IndexRequest(INDEX_NAME)
                     .id(String.valueOf(i))
                     .source("tom", i));
@@ -206,7 +206,7 @@ class ElasticsearchApplicationTests {
 
         BulkResponse bulkResponse = highLevelClient
                 .bulk(bulkRequest, RequestOptions.DEFAULT);
-        assertFalse(bulkResponse.hasFailures());
+        assertTrue(!bulkResponse.hasFailures());
     }
 
 
@@ -216,7 +216,6 @@ class ElasticsearchApplicationTests {
         //QueryBuilder queryBuilder = QueryBuilders.termQuery("tom", 18);
         //QueryBuilder queryBuilder = QueryBuilders.matchQuery("tom", 1);
         QueryBuilder queryBuilder = QueryBuilders.matchAllQuery();
-
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
         //最大的外层的查询
         sourceBuilder.query(queryBuilder);
